@@ -39,25 +39,32 @@ static void b64_encode(const uint8_t *in, size_t in_len, char *out)
     uint8_t a3[3], a4[4];
     size_t rem = in_len;
 
-    while (rem--) {
+    while (rem--)
+    {
         a3[i++] = *in++;
-        if (i == 3) {
-            a4[0] = ( a3[0] & 0xfc) >> 2;
+        if (i == 3)
+        {
+            a4[0] = (a3[0] & 0xfc) >> 2;
             a4[1] = ((a3[0] & 0x03) << 4) | ((a3[1] & 0xf0) >> 4);
             a4[2] = ((a3[1] & 0x0f) << 2) | ((a3[2] & 0xc0) >> 6);
-            a4[3] =   a3[2] & 0x3f;
-            for (int k = 0; k < 4; k++) out[j++] = B64[(int)a4[k]];
+            a4[3] = a3[2] & 0x3f;
+            for (int k = 0; k < 4; k++)
+                out[j++] = B64[(int)a4[k]];
             i = 0;
         }
     }
-    if (i) {
-        for (int k = i; k < 3; k++) a3[k] = 0;
-        a4[0] = ( a3[0] & 0xfc) >> 2;
+    if (i)
+    {
+        for (int k = i; k < 3; k++)
+            a3[k] = 0;
+        a4[0] = (a3[0] & 0xfc) >> 2;
         a4[1] = ((a3[0] & 0x03) << 4) | ((a3[1] & 0xf0) >> 4);
         a4[2] = ((a3[1] & 0x0f) << 2) | ((a3[2] & 0xc0) >> 6);
-        a4[3] =   a3[2] & 0x3f;
-        for (int k = 0; k < (int)i + 1; k++) out[j++] = B64[(int)a4[k]];
-        while (i++ < 3) out[j++] = '=';
+        a4[3] = a3[2] & 0x3f;
+        for (int k = 0; k < (int)i + 1; k++)
+            out[j++] = B64[(int)a4[k]];
+        while (i++ < 3)
+            out[j++] = '=';
     }
     out[j] = '\0';
 }
@@ -81,32 +88,86 @@ static void b64_encode(const uint8_t *in, size_t in_len, char *out)
 static int parse_qt_bytearray(const char *val, uint8_t *out, int max_out)
 {
     static const char PREFIX[] = "@ByteArray(";
-    if (strncmp(val, PREFIX, sizeof(PREFIX) - 1) != 0) return -1;
+    if (strncmp(val, PREFIX, sizeof(PREFIX) - 1) != 0)
+        return -1;
 
     const char *p = val + sizeof(PREFIX) - 1;
     int n = 0;
 
-    while (*p && *p != ')' && n < max_out) {
-        if (*p == '\\' && p[1]) {
+    while (*p && *p != ')' && n < max_out)
+    {
+        if (*p == '\\' && p[1])
+        {
             p++;
-            if (*p == 'x' || *p == 'X') {
+            if (*p == 'x' || *p == 'X')
+            {
                 /* \xHH — 1 or 2 hex digits */
                 p++;
                 char hex[3] = {0};
-                if (isxdigit((unsigned char)*p)) hex[0] = *p++;
-                if (isxdigit((unsigned char)*p)) hex[1] = *p++;
+                if (isxdigit((unsigned char)*p))
+                    hex[0] = *p++;
+                if (isxdigit((unsigned char)*p))
+                    hex[1] = *p++;
                 out[n++] = (uint8_t)strtol(hex, NULL, 16);
-            } else if (*p == '0') {
-                out[n++] = 0x00; p++;
-            } else if (*p == '"') {
-                out[n++] = 0x22; p++;
-            } else if (*p == '\\') {
-                out[n++] = 0x5c; p++;
-            } else {
+            }
+            else if (*p == '0')
+            {
+                out[n++] = 0x00;
+                p++;
+            }
+            else if (*p == 'n')
+            {
+                out[n++] = 0x0a;
+                p++;
+            }
+            else if (*p == 'r')
+            {
+                out[n++] = 0x0d;
+                p++;
+            }
+            else if (*p == 't')
+            {
+                out[n++] = 0x09;
+                p++;
+            }
+            else if (*p == 'a')
+            {
+                out[n++] = 0x07;
+                p++;
+            }
+            else if (*p == 'b')
+            {
+                out[n++] = 0x08;
+                p++;
+            }
+            else if (*p == 'f')
+            {
+                out[n++] = 0x0c;
+                p++;
+            }
+            else if (*p == 'v')
+            {
+                out[n++] = 0x0b;
+                p++;
+            }
+            else if (*p == '"')
+            {
+                out[n++] = 0x22;
+                p++;
+            }
+            else if (*p == '\\')
+            {
+                out[n++] = 0x5c;
+                p++;
+            }
+            else
+            {
                 /* Unknown escape — keep char after backslash */
                 out[n++] = (uint8_t)*p++;
             }
-        } else {
+        }
+        else
+        {
             out[n++] = (uint8_t)*p++;
         }
     }
@@ -118,24 +179,26 @@ static int parse_qt_bytearray(const char *val, uint8_t *out, int max_out)
  * parsers mangle.  We scan line-by-line ourselves.
  */
 
-typedef struct {
+typedef struct
+{
     char rp_regist_key[1024]; /* raw @ByteArray string */
     char rp_key[1024];
-    int  rp_key_type;
-    int  target;              /* PS5 if >= 1000000 */
+    int rp_key_type;
+    int target; /* PS5 if >= 1000000 */
     char server_mac[512];
 
-    char psn_account_id[256]; /* already base64, may be quoted */
+    char psn_account_id[256];     /* already base64, may be quoted */
     char psn_refresh_token[2048]; /* OAuth2 refresh token (may be quoted) */
-    char codec[32];           /* "h265" / "h264" */
-    int  bitrate;             /* kbps */
+    char codec[32];               /* "h265" / "h264" */
+    int bitrate;                  /* kbps */
     bool sleep_on_exit;
 } IniData;
 
 /* Strip leading/trailing whitespace in-place */
 static char *str_trim(char *s)
 {
-    while (*s == ' ' || *s == '\t') s++;
+    while (*s == ' ' || *s == '\t')
+        s++;
     char *end = s + strlen(s) - 1;
     while (end > s && (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n'))
         *end-- = '\0';
@@ -143,17 +206,20 @@ static char *str_trim(char *s)
 }
 
 static void process_line(IniData *d, const char *section,
-                          const char *key, const char *raw_val)
+                         const char *key, const char *raw_val)
 {
     /* Skip val leading whitespace */
-    while (*raw_val == ' ' || *raw_val == '\t') raw_val++;
+    while (*raw_val == ' ' || *raw_val == '\t')
+        raw_val++;
 
-    if (strcmp(section, "registered_hosts") == 0) {
+    if (strcmp(section, "registered_hosts") == 0)
+    {
         /* Only process "1\..." entries (first registered host) */
-        if (key[0] != '1' || key[1] != '\\') return;
+        if (key[0] != '1' || key[1] != '\\')
+            return;
         const char *field = key + 2;
 
-        if      (!strcmp(field, "rp_regist_key"))
+        if (!strcmp(field, "rp_regist_key"))
             snprintf(d->rp_regist_key, sizeof(d->rp_regist_key), "%s", raw_val);
         else if (!strcmp(field, "rp_key"))
             snprintf(d->rp_key, sizeof(d->rp_key), "%s", raw_val);
@@ -164,14 +230,17 @@ static void process_line(IniData *d, const char *section,
         else if (!strcmp(field, "server_mac"))
             snprintf(d->server_mac, sizeof(d->server_mac), "%s", raw_val);
     }
-    else if (strcmp(section, "settings") == 0) {
+    else if (strcmp(section, "settings") == 0)
+    {
         /* Strip surrounding quotes from string values */
         char val[1024];
         snprintf(val, sizeof(val), "%s", raw_val);
-        if (val[0] == '"') {
+        if (val[0] == '"')
+        {
             memmove(val, val + 1, strlen(val));
             size_t len = strlen(val);
-            if (len > 0 && val[len - 1] == '"') val[len - 1] = '\0';
+            if (len > 0 && val[len - 1] == '"')
+                val[len - 1] = '\0';
         }
 
         if (!strcmp(key, "psn_account_id"))
@@ -193,16 +262,20 @@ static void process_line(IniData *d, const char *section,
  * has not been called yet at import time.
  */
 static void extract_existing_host(const char *config_path,
-                                   char *host_out, size_t host_len,
-                                   int *width, int *height, int *fps,
-                                   char *refresh_out, size_t refresh_len)
+                                  char *host_out, size_t host_len,
+                                  int *width, int *height, int *fps,
+                                  char *refresh_out, size_t refresh_len)
 {
     *host_out = '\0';
-    if (refresh_out && refresh_len) *refresh_out = '\0';
-    *width = 1920; *height = 1080; *fps = 60;
+    if (refresh_out && refresh_len)
+        *refresh_out = '\0';
+    *width = 1920;
+    *height = 1080;
+    *fps = 60;
 
     FILE *f = fopen(config_path, "r");
-    if (!f) return;
+    if (!f)
+        return;
     char buf[8192];
     size_t n = fread(buf, 1, sizeof(buf) - 1, f);
     fclose(f);
@@ -210,12 +283,15 @@ static void extract_existing_host(const char *config_path,
 
     /* Find "host": "..." */
     const char *p = strstr(buf, "\"host\"");
-    if (p) {
+    if (p)
+    {
         p = strchr(p + 6, '"');
-        if (p) {
+        if (p)
+        {
             p++;
             const char *e = strchr(p, '"');
-            if (e && (size_t)(e - p) < host_len) {
+            if (e && (size_t)(e - p) < host_len)
+            {
                 memcpy(host_out, p, (size_t)(e - p));
                 host_out[e - p] = '\0';
             }
@@ -223,14 +299,18 @@ static void extract_existing_host(const char *config_path,
     }
 
     /* Optional: preserve existing PSN refresh token */
-    if (refresh_out && refresh_len) {
+    if (refresh_out && refresh_len)
+    {
         const char *rp = strstr(buf, "\"psn_refresh_token\"");
-        if (rp) {
+        if (rp)
+        {
             rp = strchr(rp + 18, '"');
-            if (rp) {
+            if (rp)
+            {
                 rp++;
                 const char *re = strchr(rp, '"');
-                if (re && (size_t)(re - rp) < refresh_len) {
+                if (re && (size_t)(re - rp) < refresh_len)
+                {
                     memcpy(refresh_out, rp, (size_t)(re - rp));
                     refresh_out[re - rp] = '\0';
                 }
@@ -240,11 +320,26 @@ static void extract_existing_host(const char *config_path,
 
     /* Optional: preserve video dimensions */
     const char *wp = strstr(buf, "\"video_width\"");
-    if (wp) { int v = atoi(strchr(wp, ':') + 1); if (v > 0) *width = v; }
+    if (wp)
+    {
+        int v = atoi(strchr(wp, ':') + 1);
+        if (v > 0)
+            *width = v;
+    }
     const char *hp = strstr(buf, "\"video_height\"");
-    if (hp) { int v = atoi(strchr(hp, ':') + 1); if (v > 0) *height = v; }
+    if (hp)
+    {
+        int v = atoi(strchr(hp, ':') + 1);
+        if (v > 0)
+            *height = v;
+    }
     const char *fp2 = strstr(buf, "\"video_fps\"");
-    if (fp2) { int v = atoi(strchr(fp2, ':') + 1); if (v > 0) *fps = v; }
+    if (fp2)
+    {
+        int v = atoi(strchr(fp2, ':') + 1);
+        if (v > 0)
+            *fps = v;
+    }
 }
 
 /* ── JSON string escape ──────────────────────────────────────────────────────
@@ -253,9 +348,11 @@ static void extract_existing_host(const char *config_path,
 static void json_str(const char *in, char *out, size_t out_len)
 {
     size_t j = 0;
-    for (; *in && j + 3 < out_len; in++) {
+    for (; *in && j + 3 < out_len; in++)
+    {
         unsigned char c = (unsigned char)*in;
-        if (c == '"' || c == '\\') out[j++] = '\\';
+        if (c == '"' || c == '\\')
+            out[j++] = '\\';
         out[j++] = (char)c;
     }
     out[j] = '\0';
@@ -285,15 +382,21 @@ ChiakiImportResult config_try_import_chiaki_ini(
 
     const char *actual_path = NULL;
     FILE *probe = fopen(ini_path, "r");
-    if (probe) {
+    if (probe)
+    {
         actual_path = ini_path;
         fclose(probe);
-    } else {
+    }
+    else
+    {
         probe = fopen(imported_path, "r");
-        if (probe) {
+        if (probe)
+        {
             actual_path = imported_path;
             fclose(probe);
-        } else {
+        }
+        else
+        {
             return CI_FILE_NOT_FOUND;
         }
     }
@@ -305,62 +408,71 @@ ChiakiImportResult config_try_import_chiaki_ini(
 
     /* ── Parse the INI ───────────────────────────────────────────────────── */
     FILE *f = fopen(actual_path, "r");
-    if (!f) return CI_FILE_NOT_FOUND;
+    if (!f)
+        return CI_FILE_NOT_FOUND;
 
     IniData d;
     memset(&d, 0, sizeof(d));
-    d.target  = 1000100;
+    d.target = 1000100;
     d.bitrate = 15000;
     snprintf(d.codec, sizeof(d.codec), "h265");
 
     char section[128] = "";
     char line[2048];
 
-    while (fgets(line, sizeof(line), f)) {
+    while (fgets(line, sizeof(line), f))
+    {
         /* Strip newlines */
         size_t len = strlen(line);
-        while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r'))
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
             line[--len] = '\0';
 
-        if (len == 0 || line[0] == ';' || line[0] == '#') continue;
+        if (len == 0 || line[0] == ';' || line[0] == '#')
+            continue;
 
-        if (line[0] == '[' && line[len-1] == ']') {
+        if (line[0] == '[' && line[len - 1] == ']')
+        {
             snprintf(section, sizeof(section), "%.*s", (int)(len - 2), line + 1);
             continue;
         }
 
         char *eq = strchr(line, '=');
-        if (!eq) continue;
+        if (!eq)
+            continue;
         *eq = '\0';
         char *key = str_trim(line);
-        char *val = eq + 1;  /* keep leading whitespace for ByteArrays */
+        char *val = eq + 1; /* keep leading whitespace for ByteArrays */
 
         process_line(&d, section, key, val);
     }
     fclose(f);
 
     /* ── Validate ─────────────────────────────────────────────────────────── */
-    if (!d.rp_regist_key[0]) {
+    if (!d.rp_regist_key[0])
+    {
         app_log_always("[IMPORT] ERROR: rp_regist_key not found — is this a chiaki-ng export?\n");
         return CI_PARSE_ERROR;
     }
-    if (!d.rp_key[0]) {
+    if (!d.rp_key[0])
+    {
         app_log_always("[IMPORT] ERROR: rp_key not found\n");
         return CI_PARSE_ERROR;
     }
-    if (!d.psn_account_id[0]) {
+    if (!d.psn_account_id[0])
+    {
         app_log_always("[IMPORT] ERROR: psn_account_id not found in [settings]\n");
         return CI_PARSE_ERROR;
     }
 
     /* ── Decode ByteArrays → base64 ─────────────────────────────────────── */
     uint8_t raw[256];
-    char    registered_key_b64[512];
-    char    rp_key_b64[512];
-    char    ps5_mac[32] = "";
+    char registered_key_b64[512];
+    char rp_key_b64[512];
+    char ps5_mac[32] = "";
 
     int rk_len = parse_qt_bytearray(d.rp_regist_key, raw, sizeof(raw));
-    if (rk_len < 0) {
+    if (rk_len < 0)
+    {
         app_log_always("[IMPORT] ERROR: rp_regist_key is not a valid @ByteArray\n");
         return CI_PARSE_ERROR;
     }
@@ -368,16 +480,19 @@ ChiakiImportResult config_try_import_chiaki_ini(
     app_log_always("[IMPORT] registered_key: %d bytes → %s\n", rk_len, registered_key_b64);
 
     int rpk_len = parse_qt_bytearray(d.rp_key, raw, sizeof(raw));
-    if (rpk_len < 0) {
+    if (rpk_len < 0)
+    {
         app_log_always("[IMPORT] ERROR: rp_key is not a valid @ByteArray\n");
         return CI_PARSE_ERROR;
     }
     b64_encode(raw, (size_t)rpk_len, rp_key_b64);
     app_log_always("[IMPORT] rp_key: %d bytes → %s\n", rpk_len, rp_key_b64);
 
-    if (d.server_mac[0]) {
+    if (d.server_mac[0])
+    {
         int mac_len = parse_qt_bytearray(d.server_mac, raw, sizeof(raw));
-        if (mac_len == 6) {
+        if (mac_len == 6)
+        {
             snprintf(ps5_mac, sizeof(ps5_mac),
                      "%02x:%02x:%02x:%02x:%02x:%02x",
                      raw[0], raw[1], raw[2], raw[3], raw[4], raw[5]);
@@ -389,7 +504,7 @@ ChiakiImportResult config_try_import_chiaki_ini(
 
     /* ── Preserve host and video settings from any existing config.json ───── */
     char host[256];
-    int  vid_w, vid_h, vid_fps;
+    int vid_w, vid_h, vid_fps;
     char existing_refresh[2048] = "";
     extract_existing_host(config_path, host, sizeof(host), &vid_w, &vid_h, &vid_fps,
                           existing_refresh, sizeof(existing_refresh));
@@ -401,60 +516,60 @@ ChiakiImportResult config_try_import_chiaki_ini(
 
     /* ── Write config.json ────────────────────────────────────────────────── */
     char esc_host[256], esc_psn[256], esc_rk[512], esc_rpk[512], esc_mac[64], esc_rt[4096];
-    json_str(host,                esc_host, sizeof(esc_host));
-    json_str(d.psn_account_id,   esc_psn,  sizeof(esc_psn));
-    json_str(registered_key_b64, esc_rk,   sizeof(esc_rk));
-    json_str(rp_key_b64,         esc_rpk,  sizeof(esc_rpk));
-    json_str(ps5_mac,            esc_mac,  sizeof(esc_mac));
+    json_str(host, esc_host, sizeof(esc_host));
+    json_str(d.psn_account_id, esc_psn, sizeof(esc_psn));
+    json_str(registered_key_b64, esc_rk, sizeof(esc_rk));
+    json_str(rp_key_b64, esc_rpk, sizeof(esc_rpk));
+    json_str(ps5_mac, esc_mac, sizeof(esc_mac));
 
     const char *refresh = d.psn_refresh_token[0] ? d.psn_refresh_token : existing_refresh;
-    json_str(refresh,             esc_rt,   sizeof(esc_rt));
+    json_str(refresh, esc_rt, sizeof(esc_rt));
 
     int bitrate = (d.bitrate >= 2000 && d.bitrate <= 100000) ? d.bitrate : 15000;
     const char *codec = d.codec[0] ? d.codec : (ps5 ? "h265" : "h264");
 
     FILE *out = fopen(config_path, "w");
-    if (!out) {
+    if (!out)
+    {
         app_log_always("[IMPORT] ERROR: Cannot write %s\n", config_path);
         return CI_WRITE_ERROR;
     }
 
     fprintf(out,
-        "{\n"
-        "    \"host\": \"%s\",\n"
-        "    \"ps5\": %s,\n"
-        "    \"psn_account_id\": \"%s\",\n"
-        "    \"registered_key\": \"%s\",\n"
-        "    \"rp_key\": \"%s\",\n"
-        "    \"rp_key_type\": %d,\n"
-        "    \"video_width\": %d,\n"
-        "    \"video_height\": %d,\n"
-        "    \"video_fps\": %d,\n"
-        "    \"video_bitrate\": %d,\n"
-        "    \"video_codec\": \"%s\",\n"
-        "    \"audio_volume\": 100,\n"
-        "    \"wakeup\": %s,\n"
-        "    \"ps5_mac\": \"%s\",\n"
-        "    \"wakeup_delay_ms\": 30000,\n"
-        "    \"sleep_on_exit\": %s,\n"
-        "    \"log_level\": \"warning\",\n"
-        "    \"psn_refresh_token\": \"%s\",\n"
-        "    \"ss4s_module\": \"ndl-webos5\"\n"
-        "}\n",
-        esc_host,
-        ps5 ? "true" : "false",
-        esc_psn,
-        esc_rk,
-        esc_rpk,
-        d.rp_key_type,
-        vid_w, vid_h, vid_fps,
-        bitrate,
-        codec,
-        ps5_mac[0] ? "true" : "false",
-        esc_mac,
-        d.sleep_on_exit ? "true" : "false",
-        esc_rt
-    );
+            "{\n"
+            "    \"host\": \"%s\",\n"
+            "    \"ps5\": %s,\n"
+            "    \"psn_account_id\": \"%s\",\n"
+            "    \"registered_key\": \"%s\",\n"
+            "    \"rp_key\": \"%s\",\n"
+            "    \"rp_key_type\": %d,\n"
+            "    \"video_width\": %d,\n"
+            "    \"video_height\": %d,\n"
+            "    \"video_fps\": %d,\n"
+            "    \"video_bitrate\": %d,\n"
+            "    \"video_codec\": \"%s\",\n"
+            "    \"audio_volume\": 100,\n"
+            "    \"wakeup\": %s,\n"
+            "    \"ps5_mac\": \"%s\",\n"
+            "    \"wakeup_delay_ms\": 30000,\n"
+            "    \"sleep_on_exit\": %s,\n"
+            "    \"log_level\": \"warning\",\n"
+            "    \"psn_refresh_token\": \"%s\",\n"
+            "    \"ss4s_module\": \"ndl-webos5\"\n"
+            "}\n",
+            esc_host,
+            ps5 ? "true" : "false",
+            esc_psn,
+            esc_rk,
+            esc_rpk,
+            d.rp_key_type,
+            vid_w, vid_h, vid_fps,
+            bitrate,
+            codec,
+            ps5_mac[0] ? "true" : "false",
+            esc_mac,
+            d.sleep_on_exit ? "true" : "false",
+            esc_rt);
     fclose(out);
 
     app_log_always("[IMPORT] config.json written: host=%s ps5=%d rp_key_type=%d "
@@ -464,14 +579,17 @@ ChiakiImportResult config_try_import_chiaki_ini(
                    ps5_mac[0] ? ps5_mac : "(none)");
 
     /* ── Rename INI so we don't re-import on next auto-launch ────────────── */
-    if (from_original) {
+    if (from_original)
+    {
         char done_path[512];
         snprintf(done_path, sizeof(done_path), "%s.imported", ini_path);
         if (rename(ini_path, done_path) == 0)
             app_log_always("[IMPORT] Renamed → %s (won't auto-import)\n", done_path);
         else
             app_log_always("[IMPORT] Could not rename INI file — will re-import next launch\n");
-    } else {
+    }
+    else
+    {
         app_log_always("[IMPORT] Re-imported from %s (already renamed)\n", actual_path);
     }
 

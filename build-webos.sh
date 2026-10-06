@@ -115,7 +115,7 @@ build_opus() {
     fi
     pushd "$src"
     ./configure --host=arm-webos-linux-gnueabi --prefix="$OUR_STAGING" \
-        --enable-static --disable-shared --disable-doc --disable-extra-programs
+        --enable-static --disable-shared --with-pic --disable-doc --disable-extra-programs
     make -j"$NJOBS" && make install
     popd
 }
@@ -210,6 +210,7 @@ build_curl() {
         tar xf "/tmp/curl-$ver.tar.gz" -C /tmp
     fi
     pushd "$src"
+    CPPFLAGS="-I$OUR_STAGING/include" LDFLAGS="-L$OUR_STAGING/lib" \
     ./configure \
         --host=arm-webos-linux-gnueabi --prefix="$OUR_STAGING" \
         --enable-static --disable-shared \
@@ -331,6 +332,36 @@ build_jerasure() {
     echo "-- Jerasure built: ${#objects[@]} objects"
 }
 
+# ── libevent ──────────────────────────────────────────────────────────────────
+build_libevent() {
+    local ver="2.1.12"
+    local src="/tmp/libevent-$ver-stable"
+    [[ -f "$OUR_STAGING/lib/libevent.a" ]] && { echo "-- libevent: skip"; return; }
+    echo "-- Building libevent $ver"
+    if [[ ! -d "$src" ]]; then
+        wget -qO "/tmp/libevent-$ver.tar.gz" \
+            "https://github.com/libevent/libevent/releases/download/release-$ver-stable/libevent-$ver-stable.tar.gz"
+        tar xf "/tmp/libevent-$ver.tar.gz" -C /tmp
+    fi
+    local bdir="$src/build"; mkdir -p "$bdir"
+    cmake -B "$bdir" -S "$src" \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
+        -DCMAKE_INSTALL_PREFIX="$OUR_STAGING" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DEVENT__DISABLE_TESTS=ON \
+        -DEVENT__DISABLE_SAMPLES=ON \
+        -DEVENT__DISABLE_BENCHMARK=ON \
+        -DEVENT__LIBRARY_TYPE=STATIC \
+        -DOPENSSL_ROOT_DIR="$OUR_STAGING" \
+        -DOPENSSL_INCLUDE_DIR="$OUR_STAGING/include" \
+        -DOPENSSL_CRYPTO_LIBRARY="$OUR_STAGING/lib/libcrypto.a" \
+        -DOPENSSL_SSL_LIBRARY="$OUR_STAGING/lib/libssl.a" \
+        -DCMAKE_FIND_ROOT_PATH="$OUR_STAGING;$SYSROOT" \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    cmake --build "$bdir" -j"$NJOBS"
+    cmake --install "$bdir"
+}
+
 build_openssl
 build_opus
 build_jsonc
@@ -338,6 +369,7 @@ build_miniupnpc
 build_curl
 build_gf_complete
 build_jerasure
+build_libevent
 
 # ── Clone ss4s ────────────────────────────────────────────────────────────────
 SS4S_DIR="$SCRIPT_DIR/third-party/ss4s"
@@ -469,6 +501,21 @@ if grep -q 'pthread_clockjoin_np' "$THREAD_C" 2>/dev/null; then
     fi
 else
     echo "-- thread.c: no pthread_clockjoin_np (already patched or different version)"
+fi
+
+# aligned_alloc was added in glibc 2.16 but webOS's glibc may not export it.
+# Replace with posix_memalign which is universally available.
+COMMON_C="$CHIAKI_NG_DIR/lib/src/common.c"
+if grep -q 'return aligned_alloc' "$COMMON_C" 2>/dev/null; then
+    sed -i '/return aligned_alloc/c\	\tvoid *ptr = NULL; if(posix_memalign(\&ptr, alignment, size) != 0) return NULL; return ptr;' \
+        "$COMMON_C"
+    if grep -q 'posix_memalign' "$COMMON_C"; then
+        echo "-- common.c: patched aligned_alloc → posix_memalign"
+    else
+        echo "-- WARNING: aligned_alloc patch may have failed"
+    fi
+else
+    echo "-- common.c: no aligned_alloc (already patched or different version)"
 fi
 
 # ── Generate cmake toolchain extension ────────────────────────────────────────
